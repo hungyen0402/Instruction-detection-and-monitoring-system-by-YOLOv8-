@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}{{ camera.name }}{% endblock %}
+
+{% block content %}
+<!-- Thêm audio element cho âm thanh cảnh báo -->
+<audio id="alertSound" preload="auto">
+    <source src="{{ url_for('static', filename='sounds/' + camera.alert_sound) }}" type="audio/mpeg">
+</audio>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ camera.name }}</h4>
+                <div>
+                    <button id="toggleBoxes" class="btn btn-sm btn-light me-2">
+                        <i class="fas fa-eye"></i> Ẩn/Hiện Box
+                    </button>
+                    <span class="badge {% if camera.is_active %}bg-success{% else %}bg-danger{% endif %}>
+                        {{ 'Hoạt động' if camera.is_active else 'Không hoạt động' }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="camera-feed position-relative">
+                    <img src="{{ url_for('bp.video_feed', camera_id=camera.id) }}" 
+                         class="img-fluid w-100" alt="Camera Feed">
+                    <div id="liveDetections" class="position-absolute top-0 start-0 p-2 text-white bg-dark bg-opacity-75"
+                         style="max-width: 300px; display: none;">
+                        <h6 class="mb-2">Phát hiện trực tiếp:</h6>
+                        <div id="detectionsList"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <p class="text-muted mb-0">
+                    <i class="fas fa-link"></i> {{ camera.url }}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-bell"></i> Cảnh báo gần đây</h5>
+            </div>
+            <div class="card-body alert-list p-0">
+                {% if alerts %}
+                <div class="list-group list-group-flush">
+                    {% for alert in alerts %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-1">{{ alert.detection_type }}</h6>
+                            <small class="text-muted">
+                                {{ alert.timestamp.strftime('%H:%M:%S %d/%m/%Y') }}
+                            </small>
+                        </div>
+                        {% if alert.detection %}
+                        <p class="mb-1">Độ tin cậy: {{ "%.2f"|format(alert.detection.confidence*100) }}%</p>
+                        {% endif %}
+                        {% if alert.image_path %}
+                        <img src="{{ url_for('static', filename=alert.image_path.replace('static/', '')) }}" 
+                             class="img-fluid rounded" alt="Alert Image">
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle text-success display-4"></i>
+                    <p class="mt-2">Chưa có cảnh báo nào</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-cog"></i> Cài đặt Camera</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('bp.camera_detail', camera_id=camera.id) }}">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                               {% if camera.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">Kích hoạt camera</label>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Lưu thay đổi
+                        </button>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" 
+                                data-bs-target="#deleteModal">
+                            <i class="fas fa-trash"></i> Xóa camera
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa camera</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa camera "{{ camera.name }}"?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Hành động này không thể hoàn tác!
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form method="POST" action="{{ url_for('bp.delete_camera', camera_id=camera.id) }}"
+                      style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Xóa camera</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+(function() {
+    // Cấu hình Socket.IO
+    var socket = io('/camera', {
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+    });
+    
+    var cameraId = "{{ camera.id }}";
+    var detectionsDiv = document.getElementById('liveDetections');
+    var detectionsList = document.getElementById('detectionsList');
+    var alertSound = document.getElementById('alertSound');
+    
+    console.log('[WebSocket] Initializing connection...');
+    
+    // Xử lý sự kiện kết nối
+    socket.on('connect', function() {
+        console.log('[WebSocket] Connected successfully');
+        // Gửi thông tin camera khi kết nối thành công
+        socket.emit('register_camera', { camera_id: cameraId });
+    });
+
+    socket.on('disconnect', function(reason) {
+        console.log('[WebSocket] Disconnected. Reason:', reason);
+    });
+
+    socket.on('connect_error', function(error) {
+        console.log('[WebSocket] Connection error:', error);
+        // Hiển thị thông báo lỗi cho người dùng
+        var alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            <strong>Lỗi kết nối WebSocket!</strong>
+            <p class="mb-0">Đang thử kết nối lại...</p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+    });
+
+    socket.on('reconnect', function(attemptNumber) {
+        console.log('[WebSocket] Reconnected after', attemptNumber, 'attempts');
+        // Gửi lại thông tin camera sau khi kết nối lại
+        socket.emit('register_camera', { camera_id: cameraId });
+    });
+
+    socket.on('reconnect_error', function(error) {
+        console.log('[WebSocket] Reconnection error:', error);
+    });
+
+    socket.on('reconnect_failed', function() {
+        console.log('[WebSocket] Failed to reconnect');
+        // Hiển thị thông báo lỗi cho người dùng
+        var alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            <strong>Không thể kết nối lại!</strong>
+            <p class="mb-0">Vui lòng tải lại trang.</p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+    });
+    
+    // Xử lý sự kiện nhận detections
+    socket.on('detections', function(data) {
+        console.log('[WebSocket] Received detections:', data);
+        if (parseInt(data.camera_id) === parseInt(cameraId)) {
+            if (data.detections.length > 0) {
+                detectionsDiv.style.display = 'block';
+                detectionsList.innerHTML = '';
+                
+                data.detections.forEach(function(det) {
+                    var detHtml = 
+                        '<div class="mb-1 ' + 
+                        (det.class === 'dangerous object' || det.class === 'weapon' ? 'text-danger' : '') + 
+                        '">' +
+                        '<strong>' + det.class + '</strong>: ' + 
+                        (det.confidence * 100).toFixed(1) + '%' +
+                        '</div>';
+                    detectionsList.innerHTML += detHtml;
+                });
+            } else {
+                detectionsDiv.style.display = 'none';
+            }
+        }
+    });
+
+    // Xử lý sự kiện cảnh báo
+    socket.on('alert', function(data) {
+        console.log('[WebSocket] Received alert:', data);
+        if (parseInt(data.camera_id) === parseInt(cameraId)) {
+            console.log('[WebSocket] Alert matches current camera');
+            // Phát âm thanh cảnh báo
+            alertSound.play().catch(function(error) {
+                console.log("[WebSocket] Lỗi phát âm thanh:", error);
+                // Hiển thị thông báo cho người dùng
+                var alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                alertDiv.style.zIndex = '9999';
+                alertDiv.innerHTML = `
+                    <strong>Không thể phát âm thanh cảnh báo!</strong>
+                    <p class="mb-0">Vui lòng cho phép trình duyệt phát âm thanh.</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+            });
+        } else {
+            console.log('[WebSocket] Alert is for different camera');
+        }
+    });
+    
+    // Xử lý nút ẩn/hiện bounding box
+    var toggleButton = document.getElementById('toggleBoxes');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', function() {
+            fetch('/toggle_boxes/' + cameraId)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.show_boxes) {
+                        this.innerHTML = '<i class="fas fa-eye-slash"></i> Ẩn Box';
+                    } else {
+                        this.innerHTML = '<i class="fas fa-eye"></i> Hiện Box';
+                    }
+                }.bind(this));
+        });
+    }
+
+    // Xử lý sự kiện khi người dùng rời trang
+    window.addEventListener('beforeunload', function (e) {
+        console.log('[WebSocket] Page unloading, stopping stream...');
+        // Gửi request dừng stream khi rời trang
+        navigator.sendBeacon('/stop_stream/{{ camera.id }}');
+    });
+})();
+</script>
+{% endblock %} 

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Trang chủ - Hệ thống Giám sát Thông minh{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-speedometer2"></i> Trang chủ</h1>
+    <a href="{{ url_for('bp.add_camera') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Thêm camera
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Tổng số camera</h5>
+                        <h2 class="mb-0">{{ cameras|length }}</h2>
+                    </div>
+                    <i class="bi bi-camera-video fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Cảnh báo mới</h5>
+                        <h2 class="mb-0">{{ alerts|length }}</h2>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Camera hoạt động</h5>
+                        <h2 class="mb-0">{{ cameras|selectattr('is_active')|list|length }}</h2>
+                    </div>
+                    <i class="bi bi-check-circle fs-1"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Danh sách camera</h5>
+            </div>
+            <div class="card-body">
+                {% if cameras %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tên camera</th>
+                                <th>URL</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for camera in cameras %}
+                            <tr>
+                                <td>{{ camera.name }}</td>
+                                <td>{{ camera.url }}</td>
+                                <td>
+                                    {% if camera.is_active %}
+                                    <span class="badge bg-success">Đang hoạt động</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Đã tắt</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('bp.camera_detail', camera_id=camera.id) }}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i> Xem
+                                    </a>
+                                    <button class="btn btn-sm btn-warning toggle-boxes" data-camera-id="{{ camera.id }}">
+                                        <i class="bi bi-bounding-box"></i> Bật/Tắt khung
+                                    </button>
+                                    
+                                    <!-- Form xóa camera -->
+                                    <form method="POST" action="{{ url_for('bp.delete_camera', camera_id=camera.id) }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Bạn có chắc chắn muốn xóa camera {{ camera.name }}? Hành động này không thể hoàn tác!');">
+                                            <i class="bi bi-trash"></i> Xóa
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Chưa có camera nào. Hãy thêm camera mới!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Cảnh báo gần đây</h5>
+            </div>
+            <div class="card-body alert-list">
+                {% if alerts %}
+                {% for alert in alerts %}
+                <div class="alert alert-warning">
+                    <h6 class="alert-heading">{{ alert.detection_type }}</h6>
+                    <p class="mb-1">Camera: {{ alert.camera.name }}</p>
+                    <p class="mb-1">Thời gian: {{ alert.timestamp.strftime('%H:%M:%S %d/%m/%Y') }}</p>
+                    <button class="btn btn-sm btn-warning view-alert-details" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#alertModal"
+                            data-alert-id="{{ alert.id }}"
+                            data-alert-type="{{ alert.detection_type }}"
+                            data-camera-name="{{ alert.camera.name }}"
+                            data-timestamp="{{ alert.timestamp.strftime('%H:%M:%S %d/%m/%Y') }}"
+                            data-image-path="{{ alert.image_path }}">
+                        <i class="bi bi-eye"></i> Xem chi tiết
+                    </button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Không có cảnh báo nào.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Detail Modal -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertModalLabel">Chi tiết cảnh báo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="alert-details mb-3">
+                            <h6>Thông tin cảnh báo:</h6>
+                            <p><strong>Loại phát hiện:</strong> <span id="alertType"></span></p>
+                            <p><strong>Camera:</strong> <span id="cameraName"></span></p>
+                            <p><strong>Thời gian:</strong> <span id="alertTimestamp"></span></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert-image">
+                            <img id="alertImage" src="" alt="Alert Image" class="img-fluid rounded">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger delete-alert" id="deleteAlertBtn">
+                    <i class="bi bi-trash"></i> Xóa cảnh báo
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-boxes');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const cameraId = this.dataset.cameraId;
+            fetch(`/toggle_boxes/${cameraId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.show_boxes) {
+                        this.innerHTML = '<i class="bi bi-bounding-box"></i> Tắt khung';
+                    } else {
+                        this.innerHTML = '<i class="bi bi-bounding-box"></i> Bật khung';
+                    }
+                });
+        });
+    });
+
+    // Alert modal handling
+    const alertModal = document.getElementById('alertModal');
+    const viewButtons = document.querySelectorAll('.view-alert-details');
+    let currentAlertId = null;
+    
+    viewButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            currentAlertId = this.dataset.alertId;
+            const alertType = this.dataset.alertType;
+            const cameraName = this.dataset.cameraName;
+            const timestamp = this.dataset.timestamp;
+            const imagePath = this.dataset.imagePath;
+
+            document.getElementById('alertType').textContent = alertType;
+            document.getElementById('cameraName').textContent = cameraName;
+            document.getElementById('alertTimestamp').textContent = timestamp;
+            document.getElementById('alertImage').src = imagePath;
+        });
+    });
+
+    // Delete alert handling
+    const deleteButton = document.getElementById('deleteAlertBtn');
+    deleteButton.addEventListener('click', function() {
+        if (!currentAlertId) return;
+
+        if (confirm('Bạn có chắc chắn muốn xóa cảnh báo này?')) {
+            fetch(`/delete_alert/${currentAlertId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Phản hồi từ máy chủ:", data);
+                if (data.success) {
+                    // Đóng modal
+                    const modal = bootstrap.Modal.getInstance(alertModal);
+                    modal.hide();
+                    
+                    // Xóa alert khỏi danh sách
+                    const alertElement = document.querySelector(`[data-alert-id="${currentAlertId}"]`).closest('.alert');
+                    alertElement.remove();
+                    
+                    // Cập nhật số lượng cảnh báo
+                    const alertCount = document.querySelectorAll('.alert-list .alert').length;
+                    document.querySelector('.card.bg-warning h2').textContent = alertCount;
+                    
+                    // Hiển thị thông báo thành công
+                    alert('Đã xóa cảnh báo thành công!');
+                } else {
+                    alert('Có lỗi xảy ra khi xóa cảnh báo!');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi xóa cảnh báo!');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

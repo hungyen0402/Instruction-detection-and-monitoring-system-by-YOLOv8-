@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Cài đặt cảnh báo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-bell"></i> Cài đặt cảnh báo</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('bp.update_alert_settings') }}">
+                        <div class="mb-4">
+                            <h5>Đối tượng cần cảnh báo:</h5>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="dangerous_object" id="dangerous_object"
+                                       {% if 'dangerous object' in selected_objects %}checked{% endif %}>
+                                <label class="form-check-label" for="dangerous_object">
+                                    Dangerous Object
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="weapon" id="weapon"
+                                       {% if 'weapon' in selected_objects %}checked{% endif %}>
+                                <label class="form-check-label" for="weapon">
+                                    Weapon
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="confidence" class="form-label">Ngưỡng tin cậy (0.1 - 1.0):</label>
+                            <input type="number" class="form-control" id="confidence" name="confidence"
+                                   min="0.1" max="1.0" step="0.1" value="{{ alert_settings.confidence_thresh }}">
+                            <div class="form-text">Chỉ gửi cảnh báo khi độ tin cậy vượt quá ngưỡng này</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="cooldown" class="form-label">Thời gian chờ (giây):</label>
+                            <input type="number" class="form-control" id="cooldown" name="cooldown"
+                                   min="1" max="300" value="{{ alert_settings.cooldown_seconds }}">
+                            <div class="form-text">Thời gian tối thiểu giữa các cảnh báo</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Lưu cài đặt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

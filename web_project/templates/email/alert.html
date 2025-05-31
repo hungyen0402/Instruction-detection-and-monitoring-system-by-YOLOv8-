@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #dc3545;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 0 0 5px 5px;
+        }
+        .alert-info {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚠️ Cảnh báo An ninh</h1>
+    </div>
+    
+    <div class="content">
+        <p>Xin chào,</p>
+        
+        <p>Hệ thống đã phát hiện đối tượng nguy hiểm tại camera của bạn.</p>
+        
+        <div class="alert-info">
+            <p><strong>Chi tiết cảnh báo:</strong></p>
+            <ul>
+                <li>Camera: {{ camera_name }}</li>
+                <li>Loại phát hiện: {{ detection_type }}</li>
+                <li>Độ tin cậy: {{ "%.2f"|format(confidence*100) }}%</li>
+                <li>Thời gian: {{ timestamp.strftime('%H:%M:%S %d/%m/%Y') }}</li>
+            </ul>
+        </div>
+        
+        <p>Hình ảnh phát hiện được đính kèm trong email này.</p>
+        
+        <p>Vui lòng kiểm tra và có biện pháp xử lý phù hợp.</p>
+    </div>
+    
+    <div class="footer">
+        <p>Email này được gửi tự động từ Hệ thống Giám sát An ninh.</p>
+        <p>Vui lòng không trả lời email này.</p>
+    </div>
+</body>
+</html> 

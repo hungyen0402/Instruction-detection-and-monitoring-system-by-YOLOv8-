@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Thêm Camera{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <!-- Hiển thị thông báo flash -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Thêm Camera mới</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('bp.add_camera') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Tên Camera</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="VD: Camera cổng chính" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="url" class="form-label">URL Camera</label>
+                        <input type="text" class="form-control" id="url" name="url" 
+                               placeholder="rtsp://username:password@ip:port/stream" required>
+                        <div class="form-text">
+                            Hỗ trợ các định dạng: RTSP, HTTP(S), IP Camera
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="alert_sound" class="form-label">Âm thanh cảnh báo</label>
+                        <div class="input-group">
+                            <select class="form-select" id="alert_sound" name="alert_sound">
+                                <option value="alert.mp3" selected>Âm thanh mặc định</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-primary" id="testSound">
+                                <i class="fas fa-volume-up"></i> Kiểm tra âm thanh
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            Nhấn nút kiểm tra để cho phép trình duyệt phát âm thanh cảnh báo
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Thêm Camera
+                        </button>
+                        <a href="{{ url_for('bp.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Hủy
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="fas fa-info-circle"></i> Hướng dẫn</h4>
+            </div>
+            <div class="card-body">
+                <h5>Định dạng URL hỗ trợ:</h5>
+                <ul>
+                    <li>RTSP: <code>rtsp://username:password@ip:port/stream</code></li>
+                    <li>HTTP: <code>http://ip:port/video</code></li>
+                    <li>IP Camera: <code>http://username:password@ip:port/video</code></li>
+                    <li>Local USB Camera: <code>0</code> (camera đầu tiên), <code>1</code> (camera thứ hai), ...</li>
+                </ul>
+                <p class="mb-0">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Đảm bảo camera của bạn có thể truy cập được từ máy chủ.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audio element cho kiểm tra âm thanh -->
+<audio id="testAlertSound" preload="auto">
+    <source src="{{ url_for('static', filename='sounds/alert.mp3') }}" type="audio/mpeg">
+</audio>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testButton = document.getElementById('testSound');
+    const testSound = document.getElementById('testAlertSound');
+    
+    testButton.addEventListener('click', function() {
+        // Thử phát âm thanh
+        testSound.play().catch(function(error) {
+            console.log("Lỗi phát âm thanh:", error);
+            alert("Không thể phát âm thanh. Vui lòng cho phép trình duyệt phát âm thanh.");
+        });
+    });
+});
+</script>
+{% endblock %} 
