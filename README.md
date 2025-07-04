@@ -99,4 +99,4 @@ python train_yolov8.py
 
 ## Tác giả
 
-Hoàng Đức Hùng 
+Hoàng Đức Hưng
