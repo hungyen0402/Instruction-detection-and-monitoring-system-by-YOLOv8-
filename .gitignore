@@ -1,0 +1,103 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+web_project/venv/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+instance/
+web_project/instance/
+web_project/app.db
+web_project/site.db
+
+# Model files (too large for GitHub)
+*.pt
+*.pth
+*.weights
+*.onnx
+*.tflite
+yolo11n.pt
+yolov8n.pt
+web_project/best.pt
+web_project/models/yolov8n.pt
+
+# Dataset folders (too large)
+bank robbery.v1i.yolov8/
+crimminal people.v3i.yolov8/
+data/
+frames/
+
+# Training results
+runs/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tempCodeRunnerFile.py
+*.tmp
+*.temp
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Static files that are generated
+web_project/static/alerts/
+web_project/static/sounds/
+
+# Migration files (can be regenerated)
+web_project/migrations/versions/
+
+# Cache
+*.cache
+labels.cache 

@@ -24,6 +24,7 @@ class CameraStream:
         self.latest_frame = None
         self.show_boxes = True
         self.app = None  # Lưu trữ Flask app instance
+        self.clients = set()  # Lưu danh sách client đang xem stream
         
         # Log SocketIO initialization
         if self.socketio:
@@ -102,6 +103,16 @@ class CameraStream:
     def get_dangerous_objects(self, object_types):
         return [obj.strip().lower() for obj in object_types.split(',')]
         
+    def add_client(self, sid):
+        """Thêm client vào danh sách đang xem stream"""
+        self.clients.add(sid)
+        print(f"[Stream] Client {sid} added to camera {self.camera_id} stream")
+        
+    def remove_client(self, sid):
+        """Xóa client khỏi danh sách đang xem stream"""
+        self.clients.remove(sid)
+        print(f"[Stream] Client {sid} removed from camera {self.camera_id} stream")
+        
     def _update_frame(self):
         while self.running:
             try:
@@ -146,6 +157,7 @@ class CameraStream:
                             class_id = int(box.cls[0])
                             class_name = self.model.names[class_id].lower()  # Chuyển về chữ thường
                             confidence = float(box.conf[0])
+                
                             
                             # Sử dụng Flask app context đã lưu
                             with self.app.app_context():
@@ -217,6 +229,22 @@ class CameraStream:
                                     db.session.rollback()
                                     print(f"[Alert] Error during database operation (query/add) for camera {camera.id}: {str(e)}")
                                     logging.error(f"[Alert] Lỗi thao tác database (query/add) cho camera {camera.id}: {str(e)}")
+                
+                # Gửi frame qua WebSocket cho các client đang xem
+                if self.socketio and self.clients:
+                    try:
+                        # Encode frame thành JPEG
+                        _, buffer = cv2.imencode('.jpg', processed_frame) # bỏ qua ret 
+                        frame_data = buffer.tobytes()
+                        
+                        # Gửi frame cho từng client, gửi dưới dạng nhị phân
+                        for sid in self.clients:
+                            self.socketio.emit('frame', {
+                                'camera_id': self.camera_id,
+                                'frame': frame_data
+                            }, room=sid, namespace='/camera')
+                    except Exception as e:
+                        print(f"[Stream] Error sending frame: {e}")
                 
                 with self.frame_lock:
                     self.latest_frame = processed_frame

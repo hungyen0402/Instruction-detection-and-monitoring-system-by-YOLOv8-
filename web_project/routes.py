@@ -5,9 +5,8 @@ from urllib.parse import urlparse
 import cv2
 from extensions import db, socketio, login_manager
 from models import User, Camera, Alert, AlertSettings
-from camera import CameraManager
+from camera import CameraManager, CameraStream
 from utils import send_alert_email, can_send_alert
-from utils.detector import CameraStream
 import time
 import numpy as np
 import logging
@@ -43,7 +42,7 @@ def login():
         
         login_user(user, remember=request.form.get('remember_me') == 'true') # chức năng ghi nhớ đăng nhập 
         next_page = request.args.get('next')
-        # phòng trường hợp kẻ xấu dẫn tới 1 trang khác 
+        # phòng trường hợp kẻ xấu dẫn tới 1 trang khác, chỉ dành cho url nội bộ
         if not next_page or url_parse(next_page).netloc != '': # dùng url_parse để tách next_page thành các thành phần url
             next_page = url_for('bp.dashboard')
         return redirect(next_page)
@@ -181,6 +180,9 @@ def camera_detail(camera_id):
             if is_active:
                 # Nếu bật camera, lấy luồng video (tự động start nếu chưa có)
                 stream = CameraManager.get_stream(camera_id, socketio)
+                if not stream:
+                    flash('Không thể kết nối tới camera')
+                    return redirect(url_for('bp.camera_detail', camera_id=camera_id))
             else:
                 # Nếu tắt camera, dừng luồng video
                 CameraManager.stop_stream(camera_id)
@@ -192,27 +194,14 @@ def camera_detail(camera_id):
             logging.exception(e)  # Ghi lại lỗi chi tiết
             flash('Có lỗi xảy ra khi cập nhật cài đặt. Vui lòng thử lại!')
     
-    # Kiểm tra trạng thái kết nối thực tế
-    is_online = stream is not None and stream.connected
-    
     # Lấy danh sách cảnh báo gần đây
     alerts = Alert.query.filter_by(
         camera_id=camera_id
     ).order_by(Alert.timestamp.desc()).limit(10).all()
     
-    # Kiểm tra xem có cảnh báo mới không (trong 60 giây gần nhất)
-    latest_alert = Alert.query.filter_by(
-        camera_id=camera_id,
-    ).order_by(Alert.timestamp.desc()).first()
-    
-    has_new_alert = latest_alert and (datetime.utcnow() - latest_alert.timestamp).total_seconds() < 60
-    
     return render_template('camera_detail.html', 
                          camera=camera, 
-                         alerts=alerts, 
-                         is_online=is_online,
-                         has_new_alert=has_new_alert,
-                         now=datetime.utcnow())  # Thêm thời gian hiện tại để tính toán thời gian cảnh báo
+                         alerts=alerts)
 
 @bp.route('/toggle_boxes/<int:camera_id>')
 @login_required
@@ -229,10 +218,10 @@ def create_error_image(message):
     img = np.zeros((480, 640, 3), dtype=np.uint8)
     
     # Thêm thông báo lỗi
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    text_size = cv2.getTextSize(message, font, 1, 2)[0]
-    text_x = (img.shape[1] - text_size[0]) // 2
-    text_y = (img.shape[0] + text_size[1]) // 2
+    font = cv2.FONT_HERSHEY_SIMPLEX # chọn font chữ 
+    text_size = cv2.getTextSize(message, font, 1, 2)[0] # dữ liệu dạng tuple(chiều rộng, chiều cao)
+    text_x = (img.shape[1] - text_size[0]) // 2 # mục đính đưa chữ vào tâm ảnh 
+    text_y = (img.shape[0] + text_size[1]) // 2 # mục đính đưa chữ vào tâm ảnh
     
     cv2.putText(img, message, (text_x, text_y), font, 1, (255, 255, 255), 2)
     
@@ -437,8 +426,8 @@ def update_alert_settings():
     
     # Update settings
     alert_settings.object_types = ','.join(selected_types)
-    alert_settings.confidence_thresh = float(request.form.get('confidence', 0.5))
-    alert_settings.cooldown_seconds = int(request.form.get('cooldown', 30))
+    alert_settings.confidence_thresh = float(request.form.get('confidence', 0.5)) # nếu không có thì mặc định là 0.5
+    alert_settings.cooldown_seconds = int(request.form.get('cooldown', 30)) # nếu không có mặc định là 30
     
     # Debug logging
     print(f"Updated alert settings:")

@@ -86,9 +86,6 @@
                                     <a href="{{ url_for('bp.camera_detail', camera_id=camera.id) }}" class="btn btn-sm btn-info">
                                         <i class="bi bi-eye"></i> Xem
                                     </a>
-                                    <button class="btn btn-sm btn-warning toggle-boxes" data-camera-id="{{ camera.id }}">
-                                        <i class="bi bi-bounding-box"></i> Bật/Tắt khung
-                                    </button>
                                     
                                     <!-- Form xóa camera -->
                                     <form method="POST" action="{{ url_for('bp.delete_camera', camera_id=camera.id) }}" style="display:inline;">
@@ -179,29 +176,33 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa cảnh báo này?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const toggleButtons = document.querySelectorAll('.toggle-boxes');
-    toggleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const cameraId = this.dataset.cameraId;
-            fetch(`/toggle_boxes/${cameraId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.show_boxes) {
-                        this.innerHTML = '<i class="bi bi-bounding-box"></i> Tắt khung';
-                    } else {
-                        this.innerHTML = '<i class="bi bi-bounding-box"></i> Bật khung';
-                    }
-                });
-        });
-    });
-
     // Alert modal handling
     const alertModal = document.getElementById('alertModal');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     const viewButtons = document.querySelectorAll('.view-alert-details');
     let currentAlertId = null;
     
@@ -222,44 +223,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete alert handling
     const deleteButton = document.getElementById('deleteAlertBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
     deleteButton.addEventListener('click', function() {
         if (!currentAlertId) return;
-
-        if (confirm('Bạn có chắc chắn muốn xóa cảnh báo này?')) {
-            fetch(`/delete_alert/${currentAlertId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log("Phản hồi từ máy chủ:", data);
-                if (data.success) {
-                    // Đóng modal
-                    const modal = bootstrap.Modal.getInstance(alertModal);
-                    modal.hide();
-                    
-                    // Xóa alert khỏi danh sách
-                    const alertElement = document.querySelector(`[data-alert-id="${currentAlertId}"]`).closest('.alert');
-                    alertElement.remove();
-                    
-                    // Cập nhật số lượng cảnh báo
-                    const alertCount = document.querySelectorAll('.alert-list .alert').length;
-                    document.querySelector('.card.bg-warning h2').textContent = alertCount;
-                    
-                    // Hiển thị thông báo thành công
-                    alert('Đã xóa cảnh báo thành công!');
-                } else {
-                    alert('Có lỗi xảy ra khi xóa cảnh báo!');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
+        
+        // Đóng alert modal và mở modal xác nhận xóa
+        const alertModalInstance = bootstrap.Modal.getInstance(alertModal);
+        alertModalInstance.hide();
+        
+        const deleteConfirmModalInstance = new bootstrap.Modal(deleteConfirmModal);
+        deleteConfirmModalInstance.show();
+    });
+    
+    confirmDeleteBtn.addEventListener('click', function() {
+        fetch(`/delete_alert/${currentAlertId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Phản hồi từ máy chủ:", data);
+            if (data.success) {
+                // Đóng modal xác nhận xóa
+                const deleteConfirmModalInstance = bootstrap.Modal.getInstance(deleteConfirmModal);
+                deleteConfirmModalInstance.hide();
+                
+                // Xóa alert khỏi danh sách
+                const alertElement = document.querySelector(`[data-alert-id="${currentAlertId}"]`).closest('.alert');
+                alertElement.remove();
+                
+                // Cập nhật số lượng cảnh báo
+                const alertCount = document.querySelectorAll('.alert-list .alert').length;
+                document.querySelector('.card.bg-warning h2').textContent = alertCount;
+                
+                // Hiển thị thông báo thành công
+                alert('Đã xóa cảnh báo thành công!');
+            } else {
                 alert('Có lỗi xảy ra khi xóa cảnh báo!');
-            });
-        }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Có lỗi xảy ra khi xóa cảnh báo!');
+        });
     });
 });
 </script>
 {% endblock %}
+

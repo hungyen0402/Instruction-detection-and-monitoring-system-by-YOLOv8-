@@ -146,6 +146,7 @@
     var detectionsDiv = document.getElementById('liveDetections');
     var detectionsList = document.getElementById('detectionsList');
     var alertSound = document.getElementById('alertSound');
+    var videoFeed = document.getElementById('videoFeed');
     
     console.log('[WebSocket] Initializing connection...');
     
@@ -158,6 +159,8 @@
 
     socket.on('disconnect', function(reason) {
         console.log('[WebSocket] Disconnected. Reason:', reason);
+        // Hiển thị thông báo lỗi
+        videoFeed.src = "data:image/jpeg;base64," + btoa(createErrorImage("Mất kết nối"));
     });
 
     socket.on('connect_error', function(error) {
@@ -196,6 +199,16 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         document.body.appendChild(alertDiv);
+    });
+    
+    // Xử lý sự kiện nhận frame
+    socket.on('frame', function(data) {
+        if (parseInt(data.camera_id) === parseInt(cameraId)) {
+            // Chuyển đổi frame data thành URL
+            var blob = new Blob([data.frame], { type: 'image/jpeg' });
+            var url = URL.createObjectURL(blob);
+            videoFeed.src = url;
+        }
     });
     
     // Xử lý sự kiện nhận detections
@@ -265,6 +278,8 @@
     // Xử lý sự kiện khi người dùng rời trang
     window.addEventListener('beforeunload', function (e) {
         console.log('[WebSocket] Page unloading, stopping stream...');
+        // Hủy đăng ký camera
+        socket.emit('unregister_camera', { camera_id: cameraId });
         // Gửi request dừng stream khi rời trang
         navigator.sendBeacon('/stop_stream/{{ camera.id }}');
     });
