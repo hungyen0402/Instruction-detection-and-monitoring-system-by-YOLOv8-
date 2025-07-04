@@ -7,7 +7,6 @@ Dự án này sử dụng YOLOv8 để phát hiện và cảnh báo các hoạt 
 - Phát hiện đối tượng sử dụng YOLOv8
 - Hệ thống cảnh báo real-time
 - Giao diện web để quản lý camera
-- Gửi email cảnh báo
 - Lưu trữ và xem lại các cảnh báo
 
 ## Cấu trúc project
