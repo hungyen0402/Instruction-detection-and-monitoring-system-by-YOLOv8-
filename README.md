@@ -62,7 +62,7 @@ Bạn cần tải các file model sau và đặt vào thư mục gốc:
 - `yolov8n.pt` (YOLOv8 nano model)
 - `best.pt` (trained model)
 
-Có thể tải từ: https://github.com/ultralytics/assets/releases
+Có thể tải từ: https://github.com/hungyen0402/Instruction-detection-and-monitoring-system-by-YOLOv8-/tags
 
 ### Bước 5: Khởi tạo database
 ```bash
@@ -94,7 +94,7 @@ python train_yolov8.py
 
 ## Lưu ý
 
-- Các file model (.pt) và dataset không được push lên GitHub do kích thước lớn
+- Các file model (.pt) được push lên release và dataset không được push lên GitHub do kích thước lớn
 - Database files (.db) được ignore để tránh conflict
 - Virtual environment (venv/) không được push lên GitHub
 
